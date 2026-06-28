@@ -1,0 +1,46 @@
+# Build directories
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled files
+*.o
+*.obj
+*.pdb
+*.ilk
+*.exp
+
+# Dependencies (third-party libraries)
+lib/
+packages/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+
+# Runtime data
+pids/
+*.pid
+*.seed
+
+# Coverage data
+*.coverage
+htmlcov/

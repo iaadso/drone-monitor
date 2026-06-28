@@ -1,0 +1,263 @@
+{
+    "_comment": "无人机监控系统总配置文件",
+    
+    "project_info": {
+        "name": "无人机监控系统",
+        "version": "1.0.0",
+        "description": "无人机巡检监控系统，包含模拟器、后端服务、前端页面"
+    },
+    
+    "network": {
+        "_comment_network": "网络配置部分",
+        
+        "backend": {
+            "_comment": "后端服务配置",
+            "host": "0.0.0.0",
+            "port": 8080,
+            "url": "http://localhost:8080",
+            "api_prefix": "/api",
+            "_description": {
+                "host": "后端服务监听地址，0.0.0.0表示监听所有网卡",
+                "port": "后端服务监听端口，默认8080",
+                "url": "后端服务访问地址，前端和模拟器使用此地址连接",
+                "api_prefix": "API接口统一前缀"
+            }
+        },
+        
+        "frontend": {
+            "_comment": "前端服务配置",
+            "host": "localhost",
+            "port": 8081,
+            "url": "http://localhost:8081",
+            "_description": {
+                "host": "前端服务监听地址",
+                "port": "前端服务监听端口，默认8081",
+                "url": "前端页面访问地址"
+            }
+        },
+        
+        "simulator": {
+            "_comment": "模拟器配置",
+            "server_url": "http://localhost:8080",
+            "update_interval": 2,
+            "_description": {
+                "server_url": "模拟器连接的后端服务地址，与backend.url保持一致",
+                "update_interval": "数据上报间隔（秒），建议值：2-10秒"
+            }
+        }
+    },
+    
+    "alert_config": {
+        "_comment": "告警配置",
+        "alerts_dir": "alerts",
+        "max_alerts_per_drone": 100,
+        "alert_retention_days": 30,
+        "_description": {
+            "alerts_dir": "告警日志存储目录（绝对路径）",
+            "max_alerts_per_drone": "每个无人机保留的最大告警数量",
+            "alert_retention_days": "告警日志保留天数"
+        },
+        
+        "thresholds": {
+            "_comment": "告警阈值配置",
+            "temperature": 60,
+            "smoke_concentration": 50,
+            "fire_confidence": 80,
+            "low_battery": 20,
+            "heartbeat_timeout": 300,
+            "_description": {
+                "temperature": "温度告警阈值（℃），超过此值触发告警",
+                "smoke_concentration": "烟雾浓度告警阈值（%），超过此值触发告警",
+                "fire_confidence": "火情置信度告警阈值（%），超过此值触发告警",
+                "low_battery": "低电量告警阈值（%），低于此值触发告警并返航",
+                "heartbeat_timeout": "心跳超时时间（秒），超过此时间判定为离线"
+            }
+        }
+    },
+    
+    "frontend_config": {
+        "_comment": "前端页面配置",
+        "refresh_interval": 3,
+        "map_center": [35.8617, 104.1954],
+        "map_zoom": 5,
+        "max_trajectory_points": 50,
+        "_description": {
+            "refresh_interval": "前端数据刷新间隔（秒），建议值：3-5秒",
+            "map_center": "地图默认中心坐标 [纬度, 经度]",
+            "map_zoom": "地图默认缩放级别，范围：1-18",
+            "max_trajectory_points": "轨迹显示最大点数，防止数据过多导致卡顿"
+        },
+        
+        "map_provider": {
+            "_comment": "地图服务配置",
+            "default": "gaode",
+            "available_providers": ["gaode", "baidu", "google", "osm", "tianditu"],
+            "api_keys": {
+                "gaode": "",
+                "baidu": "",
+                "google": "",
+                "tianditu": ""
+            },
+            "_description": {
+                "default": "默认地图服务提供商",
+                "available_providers": "可选地图服务列表",
+                "api_keys": "各地图服务商的API密钥（如有需要）",
+                "_providers_detail": {
+                    "gaode": "高德地图 - 国内服务稳定，无需Key可使用瓦片",
+                    "baidu": "百度地图 - 国内服务，需申请API Key",
+                    "google": "Google Maps - 海外服务，需API Key",
+                    "osm": "OpenStreetMap - 开源免费，全球可用",
+                    "tianditu": "天地图 - 国内官方地图服务，需申请Token"
+                }
+            }
+        }
+    },
+    
+    "drone_simulation": {
+        "_comment": "无人机模拟配置",
+        "total_drones": 5,
+        "_description": {
+            "total_drones": "模拟无人机总数量，可在drones数组中增减",
+            "_usage": "修改drones数组可以增加或删除模拟无人机",
+            "_modes": {
+                "low_battery": "模拟低电量场景，电量自动维持在<20%",
+                "high_temperature": "模拟高温场景，温度自动维持在>60℃",
+                "high_smoke": "模拟高烟雾场景，烟雾浓度自动维持在>50%",
+                "high_fire_confidence": "模拟高火情置信度场景，动态计算",
+                "normal": "模拟正常场景，数据在正常范围内波动"
+            }
+        },
+        
+        "drones": [
+            {
+                "drone_id": "DRONE-001",
+                "name": "北京巡检无人机",
+                "latitude": 39.9042,
+                "longitude": 116.4074,
+                "altitude": 100,
+                "initial_battery": 100,
+                "simulation_mode": "low_battery",
+                "_description": {
+                    "drone_id": "无人机唯一标识，必填",
+                    "name": "无人机名称，建议使用中文描述",
+                    "latitude": "初始纬度坐标",
+                    "longitude": "初始经度坐标",
+                    "altitude": "初始高度（米）",
+                    "initial_battery": "初始电量百分比，默认100%",
+                    "simulation_mode": "模拟模式，决定数据生成策略"
+                }
+            },
+            {
+                "drone_id": "DRONE-002",
+                "name": "上海巡检无人机",
+                "latitude": 31.2304,
+                "longitude": 121.4737,
+                "altitude": 100,
+                "initial_battery": 100,
+                "simulation_mode": "high_temperature"
+            },
+            {
+                "drone_id": "DRONE-003",
+                "name": "广州巡检无人机",
+                "latitude": 23.1291,
+                "longitude": 113.2644,
+                "altitude": 100,
+                "initial_battery": 100,
+                "simulation_mode": "high_smoke"
+            },
+            {
+                "drone_id": "DRONE-004",
+                "name": "深圳巡检无人机",
+                "latitude": 22.5431,
+                "longitude": 114.0579,
+                "altitude": 100,
+                "initial_battery": 100,
+                "simulation_mode": "high_fire_confidence"
+            },
+            {
+                "drone_id": "DRONE-005",
+                "name": "成都巡检无人机",
+                "latitude": 30.5728,
+                "longitude": 104.0668,
+                "altitude": 100,
+                "initial_battery": 100,
+                "simulation_mode": "normal"
+            }
+        ],
+        
+        "_add_drone_example": {
+            "drone_id": "DRONE-NEW",
+            "name": "新增巡检无人机",
+            "latitude": 30.0,
+            "longitude": 120.0,
+            "altitude": 100,
+            "initial_battery": 100,
+            "simulation_mode": "normal",
+            "_note": "复制此模板添加到drones数组即可自动注册新无人机"
+        }
+    },
+    
+    "real_drone_integration": {
+        "_comment": "真实无人机接入配置",
+        "enabled": false,
+        "api_endpoints": {
+            "register": "POST /api/drones/register",
+            "heartbeat": "POST /api/drones/{drone_id}",
+            "patrol_data": "POST /api/drones/{drone_id}",
+            "query": "GET /api/drones/{drone_id}"
+        },
+        "_description": {
+            "enabled": "是否启用真实无人机接入（预留配置）",
+            "api_endpoints": "真实无人机可用的API接口",
+            "_integration_guide": {
+                "step1": "真实无人机启动时调用 register 接口注册",
+                "step2": "每5秒调用 heartbeat 接口上报心跳（轻量级）",
+                "step3": "每10秒调用 patrol_data 接口上报完整数据（触发告警）",
+                "data_format": "JSON格式，详见API文档"
+            }
+        }
+    },
+    
+    "cors_config": {
+        "_comment": "跨域配置",
+        "enabled": true,
+        "allowed_origins": ["http://localhost:8081", "http://127.0.0.1:8081"],
+        "_description": {
+            "enabled": "是否启用CORS跨域支持",
+            "allowed_origins": "允许跨域访问的源地址列表"
+        }
+    },
+    
+    "database_config": {
+        "_comment": "数据库配置（预留）",
+        "type": "file",
+        "file_path": {
+            "drones": "data/drones.json",
+            "alerts": "alerts/*.json"
+        },
+        "_future_support": {
+            "sqlite": "轻量级数据库，适合单机部署",
+            "postgres": "生产级数据库，适合大规模部署",
+            "mongodb": "文档型数据库，适合灵活数据存储"
+        },
+        "_description": {
+            "type": "当前使用文件存储（file）",
+            "file_path": "数据文件存储路径",
+            "_future_support": "未来支持的数据库类型"
+        }
+    },
+    
+    "logging": {
+        "_comment": "日志配置",
+        "level": "INFO",
+        "console_output": true,
+        "file_output": false,
+        "log_dir": "logs",
+        "_description": {
+            "level": "日志级别：DEBUG/INFO/WARN/ERROR",
+            "console_output": "是否输出到控制台",
+            "file_output": "是否输出到文件",
+            "log_dir": "日志文件目录"
+        }
+    }
+}

@@ -1,0 +1,19 @@
+{
+  "alert_id": "ALERT-DRONE-001-20260629_014236-battery",
+  "alert_type": "battery",
+  "altitude": 95.9697422524698,
+  "battery": 5.0,
+  "drone_id": "DRONE-001",
+  "drone_name": "北京巡检无人机",
+  "drone_status": "returning",
+  "fire_confidence": 4.1667757633325895,
+  "latitude": 39.903963382293746,
+  "level": 0,
+  "longitude": 116.40678782787076,
+  "reason": "Battery low (5.000000% < 20.000000%)",
+  "smoke_concentration": 10.1584820272601,
+  "status": 0,
+  "temperature": 18.34983056750665,
+  "timestamp": "2026-06-29 01:42:36",
+  "trajectory": []
+}

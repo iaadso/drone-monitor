@@ -1,0 +1,46 @@
+{
+    "server_url": "http://localhost:8080",
+    "update_interval": 2,
+    "drones": [
+        {
+            "drone_id": "DRONE-001",
+            "name": "北京巡检无人机",
+            "latitude": 39.9042,
+            "longitude": 116.4074,
+            "altitude": 100,
+            "simulation_mode": "low_battery"
+        },
+        {
+            "drone_id": "DRONE-002",
+            "name": "上海巡检无人机",
+            "latitude": 31.2304,
+            "longitude": 121.4737,
+            "altitude": 100,
+            "simulation_mode": "high_temperature"
+        },
+        {
+            "drone_id": "DRONE-003",
+            "name": "广州巡检无人机",
+            "latitude": 23.1291,
+            "longitude": 113.2644,
+            "altitude": 100,
+            "simulation_mode": "high_smoke"
+        },
+        {
+            "drone_id": "DRONE-004",
+            "name": "深圳巡检无人机",
+            "latitude": 22.5431,
+            "longitude": 114.0579,
+            "altitude": 100,
+            "simulation_mode": "high_fire_confidence"
+        },
+        {
+            "drone_id": "DRONE-005",
+            "name": "成都巡检无人机",
+            "latitude": 30.5728,
+            "longitude": 104.0668,
+            "altitude": 100,
+            "simulation_mode": "normal"
+        }
+    ]
+}

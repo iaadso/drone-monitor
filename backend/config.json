@@ -1,0 +1,6 @@
+{
+    "server_port": 8080,
+    "frontend_port": 8081,
+    "alerts_dir": "alerts",
+    "cors_enabled": true
+}

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无人机监控系统 - 巡检地图</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map {
+            height: calc(100vh - 120px);
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .drone-selector {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .drone-selector h3 {
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+        .drone-list {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .drone-btn {
+            padding: 10px 15px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .drone-btn:hover {
+            background: #cbd5e0;
+        }
+        .drone-btn.active {
+            background: #3182ce;
+            color: white;
+        }
+        .drone-btn.warning {
+            border-left: 3px solid #e53e3e;
+        }
+        .drone-info-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            width: 280px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .drone-info-panel h4 {
+            margin-bottom: 10px;
+            color: #2d3748;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+        }
+        .drone-info-panel .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .drone-info-panel .info-label {
+            color: #718096;
+        }
+        .drone-info-panel .info-value {
+            font-weight: 500;
+        }
+        .drone-info-panel .warning-value {
+            color: #e53e3e;
+        }
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2><i class="fas fa-plane"></i> 无人机监控</h2>
+        <ul class="nav-links">
+            <li><a href="index.html"><i class="fas fa-list"></i> 无人机列表</a></li>
+            <li><a href="map.html" class="active"><i class="fas fa-map-marker-alt"></i> 巡检地图</a></li>
+            <li><a href="alerts.html"><i class="fas fa-exclamation-triangle"></i> 告警中心</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1><i class="fas fa-map-marker-alt"></i> <span id="page-title">巡检地图</span></h1>
+            <div class="refresh-time">最后更新: <span id="last-update">--</span></div>
+        </div>
+
+        <div class="drone-selector" id="drone-selector">
+            <h3><i class="fas fa-plane"></i> 选择无人机查看专属地图</h3>
+            <div class="drone-list" id="drone-list"></div>
+        </div>
+
+        <div id="map-container" style="position: relative;">
+            <div id="map"></div>
+            <div class="drone-info-panel" id="drone-info-panel" style="display: none;"></div>
+            <div class="legend" id="legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #3182ce;"></div>
+                    <span>无人机位置</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #e53e3e;"></div>
+                    <span>异常无人机</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #48bb78;"></div>
+                    <span>历史轨迹</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #e53e3e; box-shadow: 0 0 5px #e53e3e;"></div>
+                    <span>疑似火点</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="static/js/app.js"></script>
+    <script>
+        let map;
+        let droneMarkers = {};
+        let trajectoryLayers = {};
+        let fireMarkers = [];
+        let currentDroneId = null;
+        let allDrones = [];
+
+        // 获取URL参数
+        function getUrlParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        function initMap() {
+            map = L.map('map').setView([35.8617, 104.1954], 5);
+
+            const gaodeStreet = L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+                subdomains: ['1', '2', '3', '4'],
+                attribution: '© 高德地图'
+            }).addTo(map);
+
+            const gaodeSatellite = L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', {
+                subdomains: ['1', '2', '3', '4'],
+                attribution: '© 高德地图'
+            });
+
+            L.control.layers({
+                '街道视图': gaodeStreet,
+                '卫星视图': gaodeSatellite
+            }).addTo(map);
+        }
+
+        // 判断是否有异常
+        function hasWarning(drone) {
+            return drone.battery < 20 || drone.temperature > 60 || 
+                   drone.smoke_concentration > 50 || drone.fire_confidence > 80;
+        }
+
+        // 渲染无人机选择列表
+        function renderDroneSelector(drones) {
+            const container = document.getElementById('drone-list');
+            container.innerHTML = '';
+
+            drones.forEach(drone => {
+                const name = drone.name || drone.drone_id;
+                const warning = hasWarning(drone);
+                const btnClass = currentDroneId === drone.drone_id ? 'drone-btn active' : 'drone-btn';
+                const warningClass = warning ? ' warning' : '';
+
+                container.innerHTML += `
+                    <button class="${btnClass}${warningClass}" onclick="selectDrone('${drone.drone_id}')">
+                        <i class="fas fa-plane"></i> ${name}
+                        ${warning ? '<i class="fas fa-exclamation-triangle" style="color:#e53e3e;"></i>' : ''}
+                    </button>
+                `;
+            });
+        }
+
+        // 选择无人机
+        function selectDrone(droneId) {
+            currentDroneId = droneId;
+            window.history.pushState({}, '', `map.html?drone=${droneId}`);
+            
+            const drone = allDrones.find(d => d.drone_id === droneId);
+            if (drone) {
+                const name = drone.name || droneId;
+                document.getElementById('page-title').textContent = `${name} - 巡检地图`;
+                map.setView([drone.latitude, drone.longitude], 15);
+            }
+            
+            renderDroneSelector(allDrones);
+            updateMap(allDrones, []);
+            showDroneInfoPanel(droneId);
+        }
+
+        // 显示无人机信息面板
+        function showDroneInfoPanel(droneId) {
+            const drone = allDrones.find(d => d.drone_id === droneId);
+            if (!drone) return;
+
+            const panel = document.getElementById('drone-info-panel');
+            const name = drone.name || droneId;
+
+            const tempClass = drone.temperature > 60 ? 'warning-value' : '';
+            const smokeClass = drone.smoke_concentration > 50 ? 'warning-value' : '';
+            const fireClass = drone.fire_confidence > 80 ? 'warning-value' : '';
+            const batteryClass = drone.battery < 20 ? 'warning-value' : '';
+
+            panel.innerHTML = `
+                <h4><i class="fas fa-plane"></i> ${name}</h4>
+                <div class="info-row">
+                    <span class="info-label">编号:</span>
+                    <span class="info-value">${drone.drone_id}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">电量:</span>
+                    <span class="info-value ${batteryClass}">${drone.battery.toFixed(1)}%</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">位置:</span>
+                    <span class="info-value">${drone.latitude.toFixed(4)}, ${drone.longitude.toFixed(4)}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">高度:</span>
+                    <span class="info-value">${drone.altitude.toFixed(1)}m</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">区域温度:</span>
+                    <span class="info-value ${tempClass}">${drone.temperature.toFixed(1)}°C</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">烟雾浓度:</span>
+                    <span class="info-value ${smokeClass}">${drone.smoke_concentration.toFixed(1)}%</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">火情置信度:</span>
+                    <span class="info-value ${fireClass}">${drone.fire_confidence.toFixed(1)}%</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">最后心跳:</span>
+                    <span class="info-value">${formatTime(drone.last_heartbeat)}</span>
+                </div>
+            `;
+            panel.style.display = 'block';
+        }
+
+        function updateMap(drones, alerts) {
+            // 清除旧的标记
+            Object.values(trajectoryLayers).forEach(layer => map.removeLayer(layer));
+            trajectoryLayers = {};
+
+            Object.values(droneMarkers).forEach(marker => map.removeLayer(marker));
+            droneMarkers = {};
+
+            fireMarkers.forEach(marker => map.removeLayer(marker));
+            fireMarkers = [];
+
+            // 如果选择了特定无人机，只显示该无人机
+            const displayDrones = currentDroneId 
+                ? drones.filter(d => d.drone_id === currentDroneId)
+                : drones;
+
+            displayDrones.forEach(drone => {
+                const warning = hasWarning(drone);
+                const iconColor = warning ? '#e53e3e' : '#3182ce';
+
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background:${iconColor};width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;"><i class="fas fa-plane" style="color:white;font-size:10px;"></i></div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+
+                const marker = L.marker([drone.latitude, drone.longitude], { icon }).addTo(map);
+                const name = drone.name || drone.drone_id;
+                
+                marker.bindPopup(`
+                    <b>${name}</b><br>
+                    编号: ${drone.drone_id}<br>
+                    电量: ${drone.battery.toFixed(1)}%<br>
+                    高度: ${drone.altitude.toFixed(1)}m<br>
+                    温度: ${drone.temperature.toFixed(1)}°C<br>
+                    烟雾: ${drone.smoke_concentration.toFixed(1)}%<br>
+                    火情置信度: ${drone.fire_confidence.toFixed(1)}%<br>
+                    状态: ${drone.status === 'normal' ? '正常' : '低电量'}
+                `);
+                droneMarkers[drone.drone_id] = marker;
+
+                // 显示轨迹
+                if (drone.trajectory && drone.trajectory.length > 1) {
+                    const latlngs = drone.trajectory.map(pt => [pt[0], pt[1]]);
+                    const polyline = L.polyline(latlngs, {
+                        color: '#48bb78',
+                        weight: 3,
+                        opacity: 0.7,
+                        dashArray: '5, 5'
+                    }).addTo(map);
+                    trajectoryLayers[drone.drone_id] = polyline;
+
+                    // 显示轨迹起点和终点
+                    if (latlngs.length > 0) {
+                        const startIcon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div style="background:#48bb78;width:10px;height:10px;border-radius:50%;border:2px solid white;"></div>`,
+                            iconSize: [10, 10],
+                            iconAnchor: [5, 5]
+                        });
+                        L.marker(latlngs[0], { icon: startIcon }).addTo(map);
+                    }
+                }
+            });
+
+            // 显示疑似火点（基于告警）
+            const fireIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="background:#e53e3e;width:30px;height:30px;border-radius:50%;border:3px solid white;box-shadow:0 0 15px #e53e3e;display:flex;align-items:center;justify-content:center;"><i class="fas fa-fire" style="color:white;font-size:14px;"></i></div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            // 从传感器数据判断疑似火点位置
+            displayDrones.forEach(drone => {
+                if (drone.fire_confidence > 80) {
+                    const fireMarker = L.marker([drone.latitude, drone.longitude], { icon: fireIcon }).addTo(map);
+                    const name = drone.name || drone.drone_id;
+                    fireMarker.bindPopup(`
+                        <b>🔥 疑似火点</b><br>
+                        来源: ${name}<br>
+                        火情置信度: ${drone.fire_confidence.toFixed(1)}%<br>
+                        位置: ${drone.latitude.toFixed(4)}, ${drone.longitude.toFixed(4)}
+                    `);
+                    fireMarkers.push(fireMarker);
+                }
+            });
+
+            document.getElementById('last-update').textContent = new Date().toLocaleString();
+        }
+
+        function loadData() {
+            Promise.all([fetchDrones(), fetchAlerts()]).then(([drones, alerts]) => {
+                allDrones = drones;
+                
+                // 初始化选择器
+                renderDroneSelector(drones);
+
+                // 如果URL有指定无人机
+                const urlDrone = getUrlParam('drone');
+                if (urlDrone && !currentDroneId) {
+                    selectDrone(urlDrone);
+                }
+
+                updateMap(drones, alerts);
+
+                // 更新信息面板
+                if (currentDroneId) {
+                    showDroneInfoPanel(currentDroneId);
+                }
+            }).catch(err => {
+                console.error('Failed to load data:', err);
+            });
+        }
+
+        initMap();
+        loadData();
+        setInterval(loadData, 5000);
+    </script>
+</body>
+</html>

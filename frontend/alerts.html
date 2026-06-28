@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无人机监控系统 - 告警中心</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2><i class="fas fa-plane"></i> 无人机监控</h2>
+        <ul class="nav-links">
+            <li><a href="index.html"><i class="fas fa-list"></i> 无人机列表</a></li>
+            <li><a href="map.html"><i class="fas fa-map-marker-alt"></i> 巡检地图</a></li>
+            <li><a href="alerts.html" class="active"><i class="fas fa-exclamation-triangle"></i> 告警中心</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1><i class="fas fa-exclamation-triangle"></i> 告警中心</h1>
+            <div class="refresh-time">最后更新: <span id="last-update">--</span></div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="number" id="total-alerts">0</div>
+                <div class="label">告警总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="unhandled-alerts">0</div>
+                <div class="label">待处理</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="confirmed-alerts">0</div>
+                <div class="label">已确认</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="ignored-alerts">0</div>
+                <div class="label">已忽略</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>告警列表</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>告警编号</th>
+                            <th>无人机</th>
+                            <th>位置</th>
+                            <th>等级</th>
+                            <th>原因</th>
+                            <th>时间</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alerts-table">
+                        <tr><td colspan="8" style="text-align:center;color:#999;">暂无告警数据</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="detail-modal">
+        <div class="modal-content">
+            <h3 id="modal-title">告警详情</h3>
+            <div id="modal-body"></div>
+            <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
+        </div>
+    </div>
+
+    <script src="static/js/app.js"></script>
+    <script>
+        function renderAlerts(alerts) {
+            const tbody = document.getElementById('alerts-table');
+            tbody.innerHTML = '';
+
+            document.getElementById('total-alerts').textContent = alerts.length;
+            document.getElementById('unhandled-alerts').textContent = alerts.filter(a => a.status === 0).length;
+            document.getElementById('confirmed-alerts').textContent = alerts.filter(a => a.status === 1).length;
+            document.getElementById('ignored-alerts').textContent = alerts.filter(a => a.status === 2).length;
+
+            if (alerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">暂无告警数据</td></tr>';
+                return;
+            }
+
+            alerts.forEach(alert => {
+                const levelLabel = getAlertLevelLabel(alert.level);
+                const levelText = alert.level === 2 ? '高' : alert.level === 1 ? '中' : '低';
+                const statusLabel = getAlertStatusLabel(alert.status);
+                const statusText = alert.status === 0 ? '待处理' : alert.status === 1 ? '已确认' : '已忽略';
+                const lat = typeof alert.latitude === 'number' ? alert.latitude : 0;
+                const lng = typeof alert.longitude === 'number' ? alert.longitude : 0;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${alert.alert_id || '-'}</td>
+                        <td>${alert.drone_id || '-'}</td>
+                        <td>${lat.toFixed(4)}, ${lng.toFixed(4)}</td>
+                        <td><span class="alert-level ${levelLabel}">${levelText}</span></td>
+                        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${alert.reason || ''}">${alert.reason || '-'}</td>
+                        <td>${alert.timestamp || '-'}</td>
+                        <td><span class="alert-status ${statusLabel}">${statusText}</span></td>
+                        <td>
+                            <button class="btn btn-primary" onclick="showDetail('${alert.alert_id || ''}')">详情</button>
+                            ${alert.status === 0 ? `
+                            <button class="btn btn-success" onclick="confirmAlert('${alert.alert_id || ''}')">确认</button>
+                            <button class="btn btn-secondary" onclick="ignoreAlert('${alert.alert_id || ''}')">忽略</button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('last-update').textContent = new Date().toLocaleString();
+        }
+
+        function showDetail(alertId) {
+            fetchAlerts().then(alerts => {
+                const alert = alerts.find(a => a.alert_id === alertId);
+                if (alert) {
+                    const lat = typeof alert.latitude === 'number' ? alert.latitude : 0;
+                    const lng = typeof alert.longitude === 'number' ? alert.longitude : 0;
+                    document.getElementById('modal-body').innerHTML = `
+                        <p><strong>告警编号:</strong> ${alert.alert_id || '-'}</p>
+                        <p><strong>无人机:</strong> ${alert.drone_id || '-'}</p>
+                        <p><strong>位置:</strong> ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
+                        <p><strong>告警等级:</strong> ${alert.level === 2 ? '高' : alert.level === 1 ? '中' : '低'}</p>
+                        <p><strong>告警原因:</strong> ${alert.reason || '-'}</p>
+                        <p><strong>告警时间:</strong> ${alert.timestamp || '-'}</p>
+                        <p><strong>处理状态:</strong> ${alert.status === 0 ? '待处理' : alert.status === 1 ? '已确认' : '已忽略'}</p>
+                    `;
+                    document.getElementById('detail-modal').style.display = 'block';
+                }
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('detail-modal').style.display = 'none';
+        }
+
+        function confirmAlert(alertId) {
+            updateAlertStatus(alertId, 1).then(() => {
+                loadAlerts();
+            });
+        }
+
+        function ignoreAlert(alertId) {
+            updateAlertStatus(alertId, 2).then(() => {
+                loadAlerts();
+            });
+        }
+
+        function loadAlerts() {
+            fetchAlerts().then(alerts => {
+                renderAlerts(alerts);
+            }).catch(err => {
+                console.error('Failed to fetch alerts:', err);
+            });
+        }
+
+        loadAlerts();
+        setInterval(loadAlerts, 5000);
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('detail-modal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

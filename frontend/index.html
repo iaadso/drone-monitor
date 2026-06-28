@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无人机监控系统 - 无人机列表</title>
+    <link rel="stylesheet" href="static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sensor-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .sensor-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        .sensor-label {
+            color: #666;
+            font-size: 12px;
+        }
+        .sensor-value {
+            font-weight: 500;
+            font-size: 12px;
+        }
+        .sensor-warning {
+            color: #e53e3e;
+            font-weight: 600;
+        }
+        .drone-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-map {
+            background: #3182ce;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .btn-map:hover {
+            background: #2c5282;
+        }
+        .drone-name {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2><i class="fas fa-plane"></i> 无人机监控</h2>
+        <ul class="nav-links">
+            <li><a href="index.html" class="active"><i class="fas fa-list"></i> 无人机列表</a></li>
+            <li><a href="map.html"><i class="fas fa-map-marker-alt"></i> 巡检地图</a></li>
+            <li><a href="alerts.html"><i class="fas fa-exclamation-triangle"></i> 告警中心</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1><i class="fas fa-list"></i> 无人机列表</h1>
+            <div class="refresh-time">最后更新: <span id="last-update">--</span></div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="number" id="drone-count">0</div>
+                <div class="label">无人机总数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="online-count">0</div>
+                <div class="label">在线数量</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="low-battery-count">0</div>
+                <div class="label">低电量</div>
+            </div>
+            <div class="stat-card alert-stat">
+                <div class="number" id="warning-count">0</div>
+                <div class="label">异常预警</div>
+            </div>
+        </div>
+
+        <div class="drone-grid" id="drone-grid"></div>
+    </div>
+
+    <script src="static/js/app.js"></script>
+    <script>
+        function checkHeartbeatTimeout(drone) {
+            if (!drone.last_heartbeat) return true;
+            const heartbeatTime = new Date(drone.last_heartbeat.replace(/-/g, '/'));
+            const now = new Date();
+            const diffMinutes = (now - heartbeatTime) / (1000 * 60);
+            return diffMinutes > 5;
+        }
+
+        function checkWarning(drone) {
+            if (typeof drone.battery === 'number' && drone.battery < 20) return { type: 'battery', msg: '电量过低' };
+            if (typeof drone.temperature === 'number' && drone.temperature > 60) return { type: 'temperature', msg: '温度异常' };
+            if (typeof drone.smoke_concentration === 'number' && drone.smoke_concentration > 50) return { type: 'smoke', msg: '烟雾浓度异常' };
+            if (typeof drone.fire_confidence === 'number' && drone.fire_confidence > 80) return { type: 'fire', msg: '疑似火情' };
+            return null;
+        }
+
+        function renderDrones(drones) {
+            const grid = document.getElementById('drone-grid');
+            grid.innerHTML = '';
+
+            const onlineDrones = drones.filter(d => !checkHeartbeatTimeout(d));
+            document.getElementById('drone-count').textContent = drones.length;
+            document.getElementById('online-count').textContent = onlineDrones.length;
+            document.getElementById('low-battery-count').textContent = onlineDrones.filter(d => d.status === 'low_battery').length;
+            
+            // 计算异常预警数量
+            let warningCount = 0;
+            drones.forEach(d => {
+                if (checkWarning(d)) warningCount++;
+            });
+            document.getElementById('warning-count').textContent = warningCount;
+
+            drones.forEach(drone => {
+                const battery = typeof drone.battery === 'number' ? drone.battery : 0;
+                const temperature = typeof drone.temperature === 'number' ? drone.temperature : 0;
+                const smoke_concentration = typeof drone.smoke_concentration === 'number' ? drone.smoke_concentration : 0;
+                const fire_confidence = typeof drone.fire_confidence === 'number' ? drone.fire_confidence : 0;
+                const latitude = typeof drone.latitude === 'number' ? drone.latitude : 0;
+                const longitude = typeof drone.longitude === 'number' ? drone.longitude : 0;
+                const altitude = typeof drone.altitude === 'number' ? drone.altitude : 0;
+                const droneStatus = drone.status || 'online';
+                
+                const batteryClass = getBatteryClass(battery);
+                const isOffline = droneStatus === 'offline' || checkHeartbeatTimeout(drone);
+                const warning = isOffline ? null : checkWarning(drone);
+                const cardClass = isOffline ? 'drone-card offline' : (warning ? 'drone-card ' + warning.type : 'drone-card');
+                
+                // 状态显示：使用真实状态
+                let statusBadgeHtml = '';
+                if (isOffline) {
+                    statusBadgeHtml = `<span class="status-badge offline"><i class="fas fa-times-circle"></i> 离线</span>`;
+                } else if (droneStatus === 'returning') {
+                    statusBadgeHtml = `<span class="status-badge returning"><i class="fas fa-home"></i> 返航中</span>`;
+                } else if (droneStatus === 'cruising') {
+                    statusBadgeHtml = `<span class="status-badge cruising"><i class="fas fa-plane"></i> 巡航中</span>`;
+                } else if (droneStatus === 'online') {
+                    statusBadgeHtml = `<span class="status-badge online"><i class="fas fa-check-circle"></i> 在线</span>`;
+                } else {
+                    statusBadgeHtml = `<span class="status-badge online"><i class="fas fa-check-circle"></i> ${droneStatus}</span>`;
+                }
+                
+                // 异常状态标识（在状态下方显示）
+                let warningBadgeHtml = '';
+                if (!isOffline && warning) {
+                    warningBadgeHtml = `<span class="status-badge abnormal"><i class="fas fa-exclamation-triangle"></i> ${warning.msg}</span>`;
+                }
+                
+                const droneName = drone.name || drone.drone_id || '-';
+                
+                const tempClass = temperature > 60 ? 'sensor-warning' : '';
+                const smokeClass = smoke_concentration > 50 ? 'sensor-warning' : '';
+                const fireClass = fire_confidence > 80 ? 'sensor-warning' : '';
+
+                grid.innerHTML += `
+                    <div class="${cardClass}">
+                        <div class="drone-header">
+                            <h4>${drone.drone_id || '-'}</h4>
+                            <button class="delete-btn" onclick="deleteDrone('${drone.drone_id || ''}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="drone-name">${droneName}</div>
+                        ${statusBadgeHtml}
+                        ${warningBadgeHtml}
+                        <div class="drone-info">
+                            <p><i class="fas fa-battery-three-quarters"></i> 电量: ${battery.toFixed(1)}%</p>
+                            <div class="battery-bar">
+                                <div class="battery-fill ${batteryClass}" style="width: ${battery}%"></div>
+                            </div>
+                            <p><i class="fas fa-map-pin"></i> 位置: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}</p>
+                            <p><i class="fas fa-ruler"></i> 高度: ${altitude.toFixed(1)}m</p>
+                            <p><i class="fas fa-clock"></i> 最后心跳: ${formatTime(drone.last_heartbeat)}</p>
+                            
+                            <div class="sensor-info">
+                                <div class="sensor-row">
+                                    <span class="sensor-label"><i class="fas fa-thermometer-half"></i> 区域温度:</span>
+                                    <span class="sensor-value ${tempClass}">${temperature.toFixed(1)}°C</span>
+                                </div>
+                                <div class="sensor-row">
+                                    <span class="sensor-label"><i class="fas fa-smog"></i> 烟雾浓度:</span>
+                                    <span class="sensor-value ${smokeClass}">${smoke_concentration.toFixed(1)}%</span>
+                                </div>
+                                <div class="sensor-row">
+                                    <span class="sensor-label"><i class="fas fa-fire"></i> 火情置信度:</span>
+                                    <span class="sensor-value ${fireClass}">${fire_confidence.toFixed(1)}%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="drone-actions">
+                                <button class="btn-map" onclick="viewDroneMap('${drone.drone_id || ''}')">
+                                    <i class="fas fa-map"></i> 查看地图
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('last-update').textContent = new Date().toLocaleString();
+        }
+
+        function loadDrones() {
+            fetchDrones().then(drones => {
+                renderDrones(drones);
+            }).catch(err => {
+                console.error('Failed to fetch drones:', err);
+            });
+        }
+
+        loadDrones();
+        setInterval(loadDrones, 5000);
+
+        function deleteDrone(droneId) {
+            if (confirm(`确认删除无人机 ${droneId}?`)) {
+                fetch(`${API_BASE}/drones/${droneId}`, {
+                    method: 'DELETE'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        loadDrones();
+                    } else {
+                        alert(data.message || '删除失败');
+                    }
+                })
+                .catch(err => {
+                    alert('服务器连接失败');
+                });
+            }
+        }
+
+        function viewDroneMap(droneId) {
+            window.location.href = `map.html?drone=${droneId}`;
+        }
+    </script>
+</body>
+</html>

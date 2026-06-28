@@ -1,0 +1,19 @@
+{
+  "alert_id": "ALERT-DRONE-004-20260629_013958-fire_confidence",
+  "alert_type": "fire_confidence",
+  "altitude": 82.82240016119735,
+  "battery": 94.7000000000003,
+  "drone_id": "DRONE-004",
+  "drone_name": "深圳巡检无人机",
+  "drone_status": "cruising",
+  "fire_confidence": 95.5,
+  "latitude": 22.543297646813663,
+  "level": 2,
+  "longitude": 114.05711885951172,
+  "reason": "Fire detection confidence exceeds threshold (95.500000% > 80.000000%)",
+  "smoke_concentration": 93.0,
+  "status": 0,
+  "temperature": 85.0,
+  "timestamp": "2026-06-29 01:39:58",
+  "trajectory": []
+}

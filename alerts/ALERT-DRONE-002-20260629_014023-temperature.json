@@ -1,0 +1,19 @@
+{
+  "alert_id": "ALERT-DRONE-002-20260629_014023-temperature",
+  "alert_type": "temperature",
+  "altitude": 64.86395009384144,
+  "battery": 94.6000000000003,
+  "drone_id": "DRONE-002",
+  "drone_name": "上海巡检无人机",
+  "drone_status": "cruising",
+  "fire_confidence": 5.46483904896672,
+  "latitude": 31.23092180418655,
+  "level": 2,
+  "longitude": 121.47312782308803,
+  "reason": "Temperature exceeds threshold (67.000000C > 60.000000C)",
+  "smoke_concentration": 12.065197122847904,
+  "status": 0,
+  "temperature": 67.0,
+  "timestamp": "2026-06-29 01:40:23",
+  "trajectory": []
+}

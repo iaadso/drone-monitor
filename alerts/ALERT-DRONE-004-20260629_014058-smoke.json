@@ -1,0 +1,19 @@
+{
+  "alert_id": "ALERT-DRONE-004-20260629_014058-smoke",
+  "alert_type": "smoke",
+  "altitude": 60.82151450673723,
+  "battery": 94.50000000000031,
+  "drone_id": "DRONE-004",
+  "drone_name": "深圳巡检无人机",
+  "drone_status": "cruising",
+  "fire_confidence": 100.0,
+  "latitude": 22.54298381824892,
+  "level": 2,
+  "longitude": 114.05683080431866,
+  "reason": "Smoke concentration exceeds threshold (93.000000 > 50.000000)",
+  "smoke_concentration": 93.0,
+  "status": 0,
+  "temperature": 95.0,
+  "timestamp": "2026-06-29 01:40:58",
+  "trajectory": []
+}

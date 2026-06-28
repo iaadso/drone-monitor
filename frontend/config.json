@@ -1,0 +1,5 @@
+{
+    "backend_url": "http://localhost:8080",
+    "frontend_port": 8081,
+    "refresh_interval": 3
+}
