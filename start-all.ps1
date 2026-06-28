@@ -35,16 +35,16 @@ function Load-Pids {
     return $null
 }
 
-function Stop-ServiceByPid($pid, $name) {
-    if ($pid -and $pid -gt 0) {
+function Stop-ServiceByProcessId($processId, $name) {
+    if ($processId -and $processId -gt 0) {
         try {
-            $proc = Get-Process -Id $pid -ErrorAction Stop
-            Write-Status "Stopping $name (PID: $pid)..." "Yellow"
+            $proc = Get-Process -Id $processId -ErrorAction Stop
+            Write-Status "Stopping $name (PID: $processId)..." "Yellow"
             $proc | Stop-Process -Force
             Start-Sleep -Milliseconds 500
             Write-Status "$name stopped" "Green"
         } catch {
-            Write-Status "$name (PID: $pid) not running or already stopped" "Gray"
+            Write-Status "$name (PID: $processId) not running or already stopped" "Gray"
         }
     }
 }
@@ -53,9 +53,9 @@ function Stop-All {
     Write-Status "Stopping all services..." "Yellow"
     $pids = Load-Pids
     if ($pids) {
-        Stop-ServiceByPid $pids.backend "Backend"
-        Stop-ServiceByPid $pids.simulator "Simulator"
-        Stop-ServiceByPid $pids.frontend "Frontend"
+        Stop-ServiceByProcessId $pids.backend "Backend"
+        Stop-ServiceByProcessId $pids.simulator "Simulator"
+        Stop-ServiceByProcessId $pids.frontend "Frontend"
         Remove-Item -Path $PidFile -Force -ErrorAction SilentlyContinue
     } else {
         Get-Process -Name "drone-backend" -ErrorAction SilentlyContinue | Stop-Process -Force
